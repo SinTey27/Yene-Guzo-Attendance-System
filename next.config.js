@@ -7,7 +7,7 @@ const nextConfig = {
   },
   // Enable prefetching for faster navigation
   experimental: {
-    optimizeCss: true,
+    // optimizeCss: true,
   },
 };
 
