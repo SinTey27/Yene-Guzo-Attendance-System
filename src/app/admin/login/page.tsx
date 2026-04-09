@@ -114,8 +114,8 @@ export default function AdminLoginPage() {
       {/* Login Card - Centered */}
       <div className="max-w-md w-full relative z-10">
         {/* Header Section with Kifiya Branding */}
-        <div className="text-center mb-8 animate-fade-down">
-          <div className="inline-flex items-center justify-center mb-4">
+        <div className="text-center animate-fade-down">
+          <div className="inline-flex items-center justify-center mb-2">
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-6 py-3 rounded-full">
               <FiTruck className="w-6 h-6 text-[#EB7D23]" />
               <span className="text-white font-bold text-lg tracking-wide">
