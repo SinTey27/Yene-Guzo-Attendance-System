@@ -1,15 +1,9 @@
-# Create complete .gitignore with all entries
-@'
+# .gitignore
 # dependencies
 /node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
-package-lock.json
-
-# pnpm - explicitly block it
-pnpm-lock.yaml
-.pnpm-store
 
 # testing
 /coverage
@@ -40,4 +34,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-'@ | Out-File -FilePath .gitignore -Encoding UTF8
