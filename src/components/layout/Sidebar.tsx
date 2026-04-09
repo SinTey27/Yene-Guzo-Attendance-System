@@ -61,12 +61,12 @@ export default function Sidebar({
     <aside className="w-64 bg-gradient-to-b from-[#02404F] to-[#036b82] h-screen fixed left-0 top-0 text-white overflow-y-auto z-50 flex flex-col">
       <div className="p-6 border-b border-white/10">
         <div className="text-center">
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-6">
             <Image
               src="/images/logo.png"
               alt="Yene Guzo"
-              width={120}
-              height={60}
+              width={60}
+              height={30}
               className="object-contain"
               priority
               onError={(e) => {

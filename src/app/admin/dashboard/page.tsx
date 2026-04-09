@@ -1,4 +1,3 @@
-// src/app/dashboard/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -11,7 +10,6 @@ import {
   FiRefreshCw,
   FiMapPin,
   FiCalendar,
-  FiTrendingUp,
 } from "react-icons/fi";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
@@ -22,8 +20,7 @@ import Pagination from "@/components/ui/Pagination";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AttendanceChart from "@/components/charts/AttendanceChart";
 import { googleSheetsService } from "@/services/googleSheets.service";
-// import { DashboardData, TodaySummary } from "@/types";
-import { DashboardData, TodaySummary } from "@/services/googleSheets.service";
+import { DashboardData } from "@/services/googleSheets.service";
 import { useRouter } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 
@@ -43,7 +40,6 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // ✅ Use googleSheetsService instead of api
       const dashboardData = await googleSheetsService.getDashboardData();
       setData(dashboardData);
     } catch (error) {
@@ -54,14 +50,24 @@ export default function DashboardPage() {
   };
 
   const handleLogout = () => {
+    // Clear all auth-related storage
     localStorage.removeItem("currentUser");
     localStorage.removeItem("adminUser");
     localStorage.removeItem("adminToken");
+    localStorage.removeItem("rememberedEmail");
+    localStorage.removeItem("staffEmail");
+
+    // Clear all cookies
     document.cookie.split(";").forEach((c) => {
       document.cookie = c
         .replace(/^ +/, "")
         .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
     });
+
+    // Clear session storage if any
+    sessionStorage.clear();
+
+    // Redirect to admin login page
     router.push("/admin/login");
   };
 
@@ -130,7 +136,7 @@ export default function DashboardPage() {
   return (
     <AuthGuard>
       <div className="flex h-screen bg-gray-50">
-        {/* Mobile sidebar */}
+        {/* Mobile sidebar overlay */}
         <div
           className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? "block" : "hidden"}`}
         >
@@ -154,35 +160,36 @@ export default function DashboardPage() {
           />
         </div>
 
+        {/* Main Content Area */}
         <div className="flex-1 lg:ml-64 overflow-y-auto">
           <Header title="Dashboard" onMenuClick={() => setSidebarOpen(true)} />
 
-          <main className="p-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <main className="p-4 lg:p-5">
+            {/* Stats Cards - Compact Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-5 lg:mb-6">
               <StatCard
-                icon={<FiUsers />}
+                icon={<FiUsers className="w-4 h-4" />}
                 title="Total Staff"
                 value={data?.stats.totalStaff || 0}
                 subtitle="Registered employees"
                 iconBg="bg-blue-100 text-blue-600"
               />
               <StatCard
-                icon={<FiCheckCircle />}
+                icon={<FiCheckCircle className="w-4 h-4" />}
                 title="Present Today"
                 value={data?.stats.presentToday || 0}
                 subtitle={`${data?.stats.attendanceRate || 0}% attendance`}
                 iconBg="bg-green-100 text-green-600"
               />
               <StatCard
-                icon={<FiXCircle />}
+                icon={<FiXCircle className="w-4 h-4" />}
                 title="Absent Today"
                 value={data?.stats.absentToday || 0}
                 subtitle="Not checked in"
                 iconBg="bg-red-100 text-red-600"
               />
               <StatCard
-                icon={<FiClock />}
+                icon={<FiClock className="w-4 h-4" />}
                 title="Late Today"
                 value={data?.stats.lateToday || 0}
                 subtitle="After 9:00 AM"
@@ -190,73 +197,77 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* Charts Section - Only Attendance Chart */}
-            <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-8">
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <span className="w-1 h-6 bg-[#EB7D23] rounded-full"></span>
+            {/* Charts Section - Compact */}
+            <div className="grid grid-cols-1 gap-4 lg:gap-5 mb-5 lg:mb-6">
+              <div className="bg-white rounded-xl p-4 lg:p-5 shadow-sm border border-gray-200">
+                <h3 className="text-sm lg:text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-[#EB7D23] rounded-full"></span>
                   Attendance Distribution
                 </h3>
-                <div className="h-80">
+                <div className="h-64 lg:h-72">
                   <AttendanceChart data={data?.stats} />
                 </div>
               </div>
             </div>
 
-            {/* Today's Attendance Table */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                  <FiCalendar className="text-[#EB7D23]" />
-                  Today's Attendance
-                </h3>
-                <div className="flex gap-3 w-full sm:w-auto">
-                  <SearchBox
-                    value={searchTerm}
-                    onChange={(value) => {
-                      setSearchTerm(value);
-                      setTodayPage(1);
-                    }}
-                    placeholder="Search by name..."
-                    className="flex-1 sm:flex-initial"
-                  />
-                  <button
-                    onClick={loadDashboardData}
-                    className="p-2 text-gray-600 hover:text-[#02404F] transition-colors rounded-lg hover:bg-gray-100"
-                    disabled={loading}
-                  >
-                    <FiRefreshCw className={loading ? "animate-spin" : ""} />
-                  </button>
-                  <button
-                    onClick={exportData}
-                    className="p-2 text-gray-600 hover:text-[#02404F] transition-colors rounded-lg hover:bg-gray-100"
-                  >
-                    <FiDownload />
-                  </button>
+            {/* Today's Attendance Table - Compact */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="p-4 lg:p-5 border-b border-gray-200">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <h3 className="text-sm lg:text-base font-semibold text-gray-800 flex items-center gap-2">
+                    <FiCalendar className="text-[#EB7D23] w-4 h-4" />
+                    Today's Attendance
+                  </h3>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <SearchBox
+                      value={searchTerm}
+                      onChange={(value) => {
+                        setSearchTerm(value);
+                        setTodayPage(1);
+                      }}
+                      placeholder="Search by name..."
+                      className="flex-1 sm:flex-initial"
+                    />
+                    <button
+                      onClick={loadDashboardData}
+                      className="p-2 text-gray-600 hover:text-[#02404F] transition-colors rounded-lg hover:bg-gray-100"
+                      disabled={loading}
+                    >
+                      <FiRefreshCw
+                        className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                      />
+                    </button>
+                    <button
+                      onClick={exportData}
+                      className="p-2 text-gray-600 hover:text-[#02404F] transition-colors rounded-lg hover:bg-gray-100"
+                    >
+                      <FiDownload className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Table */}
+              {/* Responsive Table */}
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <thead className="bg-gray-50">
+                    <tr className="border-b border-gray-200">
+                      <th className="px-4 lg:px-6 py-2 lg:py-3 text-left text-[11px] lg:text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 lg:px-6 py-2 lg:py-3 text-left text-[11px] lg:text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Name
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 lg:px-6 py-2 lg:py-3 text-left text-[11px] lg:text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Position
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 lg:px-6 py-2 lg:py-3 text-left text-[11px] lg:text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Check In
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 lg:px-6 py-2 lg:py-3 text-left text-[11px] lg:text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Check Out
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 lg:px-6 py-2 lg:py-3 text-left text-[11px] lg:text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Terminal
                       </th>
                     </tr>
@@ -264,52 +275,68 @@ export default function DashboardPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {paginatedToday.length > 0 ? (
                       paginatedToday.map((staff, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
+                        <tr
+                          key={index}
+                          className="hover:bg-gray-50 transition-colors"
+                        >
+                          <td className="px-4 lg:px-6 py-2 lg:py-3 whitespace-nowrap">
                             {getStatusBadge(staff.status, staff.isLate)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                            {staff.name}
+                          <td className="px-4 lg:px-6 py-2 lg:py-3 whitespace-nowrap">
+                            <span className="text-[12px] lg:text-sm font-medium text-gray-900">
+                              {staff.name}
+                            </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                            {staff.position}
+                          <td className="px-4 lg:px-6 py-2 lg:py-3 whitespace-nowrap">
+                            <span className="text-[12px] lg:text-sm text-gray-600">
+                              {staff.position}
+                            </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                            {staff.checkIn
-                              ? new Date(staff.checkIn).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : "-"}
+                          <td className="px-4 lg:px-6 py-2 lg:py-3 whitespace-nowrap">
+                            <span className="text-[12px] lg:text-sm text-gray-600">
+                              {staff.checkIn
+                                ? new Date(staff.checkIn).toLocaleTimeString(
+                                    [],
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )
+                                : "-"}
+                            </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                            {staff.checkOut
-                              ? new Date(staff.checkOut).toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  },
-                                )
-                              : "-"}
+                          <td className="px-4 lg:px-6 py-2 lg:py-3 whitespace-nowrap">
+                            <span className="text-[12px] lg:text-sm text-gray-600">
+                              {staff.checkOut
+                                ? new Date(staff.checkOut).toLocaleTimeString(
+                                    [],
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )
+                                : "-"}
+                            </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1 text-sm text-gray-600">
-                              <FiMapPin className="text-[#EB7D23]" />
+                          <td className="px-4 lg:px-6 py-2 lg:py-3 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 text-[12px] lg:text-sm text-gray-600">
+                              <FiMapPin className="text-[#EB7D23] w-3 h-3" />
                               {staff.terminalID}
                             </span>
                           </td>
                         </tr>
                       ))
                     ) : (
-                      <tr>
+                      <tr className="hover:bg-gray-50 transition-colors">
                         <td
                           colSpan={6}
-                          className="px-6 py-12 text-center text-gray-500"
+                          className="px-4 lg:px-6 py-8 lg:py-10 text-center"
                         >
-                          {searchTerm
-                            ? "No matching records found"
-                            : "No attendance records today"}
+                          <span className="text-[12px] lg:text-sm text-gray-500">
+                            {searchTerm
+                              ? "No matching records found"
+                              : "No attendance records today"}
+                          </span>
                         </td>
                       </tr>
                     )}
@@ -318,15 +345,17 @@ export default function DashboardPage() {
               </div>
 
               {/* Pagination */}
-              <div className="mt-6">
-                <Pagination
-                  currentPage={todayPage}
-                  totalPages={totalPages}
-                  totalItems={filteredToday.length}
-                  pageSize={rowsPerPage}
-                  onPageChange={setTodayPage}
-                />
-              </div>
+              {totalPages > 0 && (
+                <div className="px-4 lg:px-6 py-3 lg:py-4 border-t border-gray-200">
+                  <Pagination
+                    currentPage={todayPage}
+                    totalPages={totalPages}
+                    totalItems={filteredToday.length}
+                    pageSize={rowsPerPage}
+                    onPageChange={setTodayPage}
+                  />
+                </div>
+              )}
             </div>
           </main>
         </div>

@@ -2,15 +2,13 @@
 
 import { useState, useEffect } from "react";
 import {
-  FiClock,
   FiFilter,
   FiDownload,
   FiRefreshCw,
   FiCalendar,
   FiMapPin,
   FiUser,
-  FiCheckCircle,
-  FiXCircle,
+  FiClock,
 } from "react-icons/fi";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
@@ -18,7 +16,6 @@ import SearchBox from "@/components/ui/SearchBox";
 import Pagination from "@/components/ui/Pagination";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import Badge from "@/components/ui/Badge";
-import { api } from "@/utils/api";
 import { useRouter } from "next/navigation";
 
 interface AttendanceRecord {
@@ -57,8 +54,7 @@ export default function AttendancePage() {
   const loadAttendance = async () => {
     setLoading(true);
     try {
-      // Mock data - replace with actual API call
-      // await new Promise((resolve) => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
       const mockRecords: AttendanceRecord[] = Array.from(
         { length: 50 },
@@ -68,21 +64,21 @@ export default function AttendancePage() {
             Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000,
           ).toISOString(),
           name: [
-            "John Doe",
             "Jane Smith",
-            "Mike Johnson",
-            "Sarah Williams",
             "David Brown",
+            "Sarah Williams",
+            "John Doe",
+            "Mike Johnson",
           ][Math.floor(Math.random() * 5)],
           email: `user${i + 1}@kifiya.com`,
-          position: ["Developer", "Manager", "Designer", "HR", "Admin"][
+          position: ["Admin", "HR", "Developer", "Manager", "Designer"][
             Math.floor(Math.random() * 5)
           ],
-          terminal: ["Main Office", "Branch Office", "Remote Site"][
+          terminal: ["Remote Site", "Main Office", "Branch Office"][
             Math.floor(Math.random() * 3)
           ],
           action: Math.random() > 0.5 ? "checkin" : "checkout",
-          status: ["On Time", "Late", "Early"][
+          status: ["Late", "On Time", "Early"][
             Math.floor(Math.random() * 3)
           ] as any,
           location: `${(9.02 + Math.random() * 0.1).toFixed(4)}, ${(38.74 + Math.random() * 0.1).toFixed(4)}`,
@@ -90,7 +86,6 @@ export default function AttendancePage() {
         }),
       );
 
-      // Apply filters
       let filtered = mockRecords;
 
       if (searchTerm) {
@@ -117,7 +112,6 @@ export default function AttendancePage() {
         filtered = filtered.filter((r) => new Date(r.timestamp) >= weekAgo);
       }
 
-      // Sort by timestamp (newest first)
       filtered.sort(
         (a, b) =>
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
@@ -242,51 +236,53 @@ export default function AttendancePage() {
         />
 
         <main className="p-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-              <p className="text-sm text-gray-500 mb-1">Total Records</p>
+          {/* Summary Cards - Like your screenshot */}
+          <div className="grid grid-cols-5 gap-4 mb-6">
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+              <p className="text-sm text-gray-500 mb-1">Total</p>
               <p className="text-2xl font-bold text-gray-800">
                 {summary.total}
               </p>
             </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
               <p className="text-sm text-gray-500 mb-1">Check-ins</p>
               <p className="text-2xl font-bold text-green-600">
                 {summary.checkins}
               </p>
             </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
               <p className="text-sm text-gray-500 mb-1">Check-outs</p>
               <p className="text-2xl font-bold text-orange-600">
                 {summary.checkouts}
               </p>
             </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
               <p className="text-sm text-gray-500 mb-1">On Time</p>
               <p className="text-2xl font-bold text-green-600">
                 {summary.onTime}
               </p>
             </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
               <p className="text-sm text-gray-500 mb-1">Late</p>
               <p className="text-2xl font-bold text-red-600">{summary.late}</p>
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 mb-6">
-            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-              <div className="flex items-center gap-3">
-                <FiFilter className="text-gray-400" />
-                <span className="text-sm font-medium text-gray-700">
-                  Filters:
-                </span>
+          {/* Filters - Like your screenshot */}
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <FiFilter className="text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700">
+                    Filters:
+                  </span>
+                </div>
 
                 <div className="flex gap-2">
                   <button
                     onClick={() => setDateRange("today")}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                       dateRange === "today"
                         ? "bg-[#02404F] text-white"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -296,46 +292,46 @@ export default function AttendancePage() {
                   </button>
                   <button
                     onClick={() => setDateRange("week")}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                       dateRange === "week"
                         ? "bg-[#02404F] text-white"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
-                    This Week
+                    Week
                   </button>
                   <button
                     onClick={() => setDateRange("month")}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                       dateRange === "month"
                         ? "bg-[#02404F] text-white"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
-                    This Month
+                    Month
                   </button>
                 </div>
 
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value as any)}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 border-0 focus:ring-2 focus:ring-[#02404F]"
+                  className="px-3 py-1.5 rounded-md text-sm font-medium bg-gray-100 text-gray-700 border-0 focus:ring-2 focus:ring-[#02404F]"
                 >
                   <option value="all">All Actions</option>
-                  <option value="checkin">Check-ins Only</option>
-                  <option value="checkout">Check-outs Only</option>
+                  <option value="checkin">Check-ins</option>
+                  <option value="checkout">Check-outs</option>
                 </select>
               </div>
 
-              <div className="flex gap-3 w-full lg:w-auto">
+              <div className="flex gap-3">
                 <SearchBox
                   value={searchTerm}
                   onChange={(value) => {
                     setSearchTerm(value);
                     setPage(1);
                   }}
-                  placeholder="Search by name, email..."
-                  className="flex-1 lg:w-64"
+                  placeholder="Search..."
+                  className="w-64"
                 />
                 <button
                   onClick={loadAttendance}
@@ -346,21 +342,21 @@ export default function AttendancePage() {
                 </button>
                 <button
                   onClick={exportToCSV}
-                  className="bg-[#02404F] text-white px-4 py-2 rounded-lg hover:bg-[#036b82] transition-all flex items-center gap-2"
+                  className="bg-[#02404F] text-white px-4 py-2 rounded-lg hover:bg-[#036b82] transition-all flex items-center gap-2 text-sm"
                 >
                   <FiDownload />
-                  <span className="hidden sm:inline">Export</span>
+                  <span>Export</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Attendance Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {/* Attendance Table - Like your screenshot with all text visible */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
-                  <tr>
+                  <tr className="border-b border-gray-200">
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date & Time
                     </th>
@@ -404,27 +400,19 @@ export default function AttendancePage() {
                     paginatedRecords.map((record) => (
                       <tr key={record.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <FiCalendar className="text-[#EB7D23] w-4 h-4" />
-                            <span className="text-sm text-gray-900">
-                              {new Date(record.timestamp).toLocaleDateString()}
-                            </span>
+                          <div className="text-sm text-gray-900">
+                            {new Date(record.timestamp).toLocaleDateString()}
                           </div>
-                          <div className="text-xs text-gray-500 ml-6">
+                          <div className="text-xs text-gray-500">
                             {new Date(record.timestamp).toLocaleTimeString()}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <FiUser className="text-gray-400 w-4 h-4" />
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {record.name}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {record.email}
-                              </div>
-                            </div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {record.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {record.email}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -443,7 +431,7 @@ export default function AttendancePage() {
                           {getStatusBadge(record.status)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-xs text-gray-500 font-mono">
+                          <span className="text-sm text-gray-500 font-mono">
                             {record.location}
                           </span>
                         </td>

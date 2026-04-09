@@ -10,7 +10,7 @@ interface SavedUser {
   lastUsed: string;
 }
 
-// Valid check-in locations for frontend validation (optional - backend will also validate)
+// Valid check-in locations for frontend validation
 const VALID_LOCATIONS = [
   {
     name: "Head Office - Addis Ababa",
@@ -66,7 +66,7 @@ export default function StaffCheckinPage() {
     getLocation();
     loadSavedCredentials();
     loadTodayCheckInStatus();
-    loadTodayStatusFromServer(); // Add this to check server status
+    loadTodayStatusFromServer();
   }, []);
 
   const getIP = async () => {
@@ -114,7 +114,6 @@ export default function StaffCheckinPage() {
     return { isValid: false, locationName: "Invalid Location" };
   };
 
-  // Fixed: Load today's status from server
   const loadTodayStatusFromServer = async () => {
     try {
       const response = await fetch("/api/google-script", {
@@ -124,23 +123,20 @@ export default function StaffCheckinPage() {
       });
       const data = await response.json();
 
-      // Get current user email (from input or localStorage)
       const currentEmail = email || localStorage.getItem("staffEmail");
 
-      if (currentEmail) {
+      if (currentEmail && Array.isArray(data)) {
         const userStatus = data.find(
           (s: any) => s.email?.toLowerCase() === currentEmail.toLowerCase(),
         );
 
         if (userStatus && userStatus.status === "Present") {
-          // Update todayCheckIn state based on server data
           setTodayCheckIn({
             hasCheckedIn: true,
             checkInTime: userStatus.checkIn,
             hasCheckedOut: false,
             checkOutTime: null,
           });
-          // Also save to localStorage for consistency
           const today = new Date().toLocaleDateString();
           localStorage.setItem(
             `checkin_${today}`,
@@ -153,7 +149,7 @@ export default function StaffCheckinPage() {
         }
       }
     } catch (error) {
-      console.error("Error loading today status from server:", error);
+      console.error("Error loading today status:", error);
     }
   };
 
@@ -223,18 +219,17 @@ export default function StaffCheckinPage() {
 
         if (isValid) {
           setValidLocationName(locationName);
-          setGeoStatus(`✅ Location verified: ${locationName}`);
+          setGeoStatus(`✅ Verified: ${locationName}`);
         } else {
           setValidLocationName("");
-          setGeoStatus("❌ You are outside the allowed check-in area");
+          setGeoStatus("❌ Outside allowed area");
         }
       },
       (err) => {
         let msg = "❌ Location error";
-        if (err.code === 1)
-          msg = "❌ Permission denied - Please enable location access";
+        if (err.code === 1) msg = "❌ Allow location access";
         else if (err.code === 2) msg = "❌ Position unavailable";
-        else if (err.code === 3) msg = "❌ Location timeout - Please try again";
+        else if (err.code === 3) msg = "❌ Timeout - try again";
         setGeoStatus(msg);
         setIsLocationValid(false);
       },
@@ -304,39 +299,31 @@ export default function StaffCheckinPage() {
   const quickLogin = (userEmail: string, userCode: string) => {
     setEmail(userEmail);
     setCode(userCode);
-    showStatus("Credentials loaded. Click Check In or Check Out.", "info");
+    showStatus("Credentials loaded", "info");
   };
 
   const clearSavedData = () => {
-    if (confirm("Are you sure you want to clear all saved credentials?")) {
+    if (confirm("Clear all saved credentials?")) {
       localStorage.removeItem(STORAGE_KEY);
       setEmail("");
       setCode("");
       setSavedUsers([]);
-      showStatus("Saved credentials cleared", "success");
+      showStatus("Credentials cleared", "success");
     }
   };
 
   const handleAction = async (action: "checkin" | "checkout") => {
-    // Validate inputs
     if (!email || !code) {
-      showStatus("Please fill all fields.", "error");
+      showStatus("Please fill all fields", "error");
       return;
     }
 
-    // Check today's status (frontend validation for better UX)
     if (action === "checkin") {
       if (todayCheckIn.hasCheckedIn) {
         if (todayCheckIn.hasCheckedOut) {
-          showStatus(
-            "❌ You have already checked in and out today. You can only check in once per day.",
-            "error",
-          );
+          showStatus("Already checked in/out today", "error");
         } else {
-          showStatus(
-            "❌ You are already checked in today. Please check out before leaving.",
-            "error",
-          );
+          showStatus("Already checked in today", "error");
         }
         return;
       }
@@ -344,21 +331,17 @@ export default function StaffCheckinPage() {
 
     if (action === "checkout") {
       if (!todayCheckIn.hasCheckedIn) {
-        showStatus(
-          "❌ You haven't checked in today. Please check in first.",
-          "error",
-        );
+        showStatus("Haven't checked in today", "error");
         return;
       }
       if (todayCheckIn.hasCheckedOut) {
-        showStatus("❌ You have already checked out today.", "error");
+        showStatus("Already checked out today", "error");
         return;
       }
     }
 
-    // Frontend location validation (optional - backend will also validate)
     if (!locationData.lat || !locationData.lng) {
-      showStatus("Please wait for location detection...", "error");
+      showStatus("Waiting for location...", "error");
       return;
     }
 
@@ -367,10 +350,7 @@ export default function StaffCheckinPage() {
       locationData.lng,
     );
     if (!isValid) {
-      showStatus(
-        "❌ You are outside the allowed check-in area. Please move to a valid location.",
-        "error",
-      );
+      showStatus("Outside allowed check-in area", "error");
       return;
     }
 
@@ -378,7 +358,6 @@ export default function StaffCheckinPage() {
     showStatus("Processing...", "info");
 
     try {
-      // Call Google Sheets backend for validation and storage
       const result = await googleSheetsService.processAttendance(
         email,
         code,
@@ -397,10 +376,9 @@ export default function StaffCheckinPage() {
           if (rememberMe) {
             saveCredentials(email, code, true);
           }
-          // Reload server status after check-in
           await loadTodayStatusFromServer();
           showStatus(
-            `✅ Check-in successful! ${staffName} checked in at ${now.toLocaleTimeString()} from ${locationName}`,
+            `✅ ${staffName} checked in at ${now.toLocaleTimeString()}`,
             "success",
           );
         } else {
@@ -415,10 +393,7 @@ export default function StaffCheckinPage() {
             );
           }
           saveTodayCheckOut(now.toISOString(), workingHours);
-          showStatus(
-            `✅ Check-out successful! You worked ${workingHours} hours today.`,
-            "success",
-          );
+          showStatus(`✅ Checked out! ${workingHours} hours worked`, "success");
 
           setTimeout(() => {
             setEmail("");
@@ -430,7 +405,7 @@ export default function StaffCheckinPage() {
       }
     } catch (error) {
       console.error("Error:", error);
-      showStatus("Network error. Please try again.", "error");
+      showStatus("Network error", "error");
     } finally {
       setLoading(false);
     }
@@ -439,7 +414,7 @@ export default function StaffCheckinPage() {
   const showStatus = (message: string, type: string) => {
     setStatus({ message, type });
     if (type === "success") {
-      setTimeout(() => setStatus(null), 4000);
+      setTimeout(() => setStatus(null), 3000);
     }
   };
 
@@ -449,42 +424,53 @@ export default function StaffCheckinPage() {
     loading || !todayCheckIn.hasCheckedIn || todayCheckIn.hasCheckedOut;
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-[#02404F] to-[#036b82]">
-      <div className="flex-1 flex flex-col items-center justify-center p-5">
-        <div className="max-w-[420px] w-full bg-white rounded-[28px] p-[30px_25px] shadow-2xl">
-          <h2 className="text-center text-[#02404F] text-3xl font-bold mb-2.5 flex items-center justify-center gap-2.5">
-            📋 Staff Attendance
-          </h2>
-          <p className="text-center text-gray-600 mb-6 text-[15px] leading-relaxed">
-            Enter your credentials. We'll verify your location.
-          </p>
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-[#02404F] to-[#036b82] flex flex-col">
+      {/* Main content - centered */}
+      <div className="flex-1 flex items-center justify-center p-3">
+        {/* Card - Narrower width, taller height */}
+        <div className="w-[300px] sm:w-[340px] md:w-[360px] bg-white rounded-2xl shadow-xl p-5">
+          {/* Header */}
+          <div className="text-center mb-4">
+            <h2 className="text-[#02404F] text-lg sm:text-xl font-bold flex items-center justify-center gap-2">
+              <span>📋</span>
+              <span>Staff Attendance</span>
+            </h2>
+            <p className="text-gray-500 text-xs mt-1">Enter your credentials</p>
+          </div>
 
-          {/* Today's Status Display */}
+          {/* Today's Status */}
           {todayCheckIn.hasCheckedIn && (
             <div
-              className={`mb-4 p-3 rounded-xl text-center ${todayCheckIn.hasCheckedOut ? "bg-gray-100" : "bg-green-50"}`}
+              className={`mb-4 p-2 rounded-xl text-center text-xs font-medium ${
+                todayCheckIn.hasCheckedOut
+                  ? "bg-gray-100 text-gray-600"
+                  : "bg-green-50 text-green-700"
+              }`}
             >
-              <p
-                className={`text-sm font-medium ${todayCheckIn.hasCheckedOut ? "text-gray-600" : "text-green-700"}`}
-              >
-                {todayCheckIn.hasCheckedOut ? (
-                  <>
-                    ✅ Today's attendance complete. Checked out at{" "}
-                    {new Date(todayCheckIn.checkOutTime!).toLocaleTimeString()}
-                  </>
-                ) : (
-                  <>
-                    🟢 Checked in at{" "}
-                    {new Date(todayCheckIn.checkInTime!).toLocaleTimeString()}
-                  </>
-                )}
-              </p>
+              {todayCheckIn.hasCheckedOut ? (
+                <>
+                  ✅ Checked out at{" "}
+                  {new Date(todayCheckIn.checkOutTime!).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </>
+              ) : (
+                <>
+                  🟢 Checked in at{" "}
+                  {new Date(todayCheckIn.checkInTime!).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </>
+              )}
             </div>
           )}
 
           <form onSubmit={(e) => e.preventDefault()}>
-            <div className="mb-5">
-              <label className="font-semibold block mb-2 text-[#02404F] text-sm uppercase tracking-wide">
+            {/* Email */}
+            <div className="mb-4">
+              <label className="block mb-1.5 text-[#02404F] text-xs font-semibold uppercase tracking-wide">
                 Email
               </label>
               <input
@@ -492,48 +478,50 @@ export default function StaffCheckinPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="staff@kifiya.com"
-                className="w-full p-4 border-2 border-gray-200 rounded-2xl text-base outline-none bg-gray-50 focus:border-[#02404F] focus:bg-white"
+                className="w-full p-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none bg-gray-50 focus:border-[#02404F] focus:bg-white"
                 required
                 disabled={loading || todayCheckIn.hasCheckedOut}
               />
             </div>
 
-            <div className="mb-5">
-              <label className="font-semibold block mb-2 text-[#02404F] text-sm uppercase tracking-wide">
+            {/* Code */}
+            <div className="mb-4">
+              <label className="block mb-1.5 text-[#02404F] text-xs font-semibold uppercase tracking-wide">
                 Personal Code
               </label>
-              <div className="relative w-full">
+              <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="Your secret code"
-                  className="w-full p-4 pr-12 border-2 border-gray-200 rounded-2xl text-base outline-none bg-gray-50 focus:border-[#02404F] focus:bg-white"
+                  className="w-full p-2.5 pr-9 border-2 border-gray-200 rounded-xl text-sm outline-none bg-gray-50 focus:border-[#02404F] focus:bg-white"
                   required
                   disabled={loading || todayCheckIn.hasCheckedOut}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-gray-500 hover:text-[#02404F]"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
                 >
-                  {showPassword ? "👁️‍🗨️" : "👁️"}
+                  <span className="text-sm">{showPassword ? "🙈" : "👁️"}</span>
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 my-4">
+            {/* Remember Me */}
+            <div className="flex items-center gap-2 mb-4">
               <input
                 type="checkbox"
                 id="rememberMe"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-[18px] h-[18px] accent-[#EB7D23] cursor-pointer"
+                className="w-3.5 h-3.5 accent-[#EB7D23] cursor-pointer"
                 disabled={loading || todayCheckIn.hasCheckedOut}
               />
               <label
                 htmlFor="rememberMe"
-                className="text-sm font-normal text-gray-600 cursor-pointer"
+                className="text-xs text-gray-600 cursor-pointer"
               >
                 Remember me on this device
               </label>
@@ -541,8 +529,8 @@ export default function StaffCheckinPage() {
 
             {/* Quick Login Buttons */}
             {savedUsers.length > 0 && !todayCheckIn.hasCheckedOut && (
-              <div className="flex gap-2.5 mt-2.5 mb-2.5 flex-wrap">
-                {savedUsers.map((user, index) => {
+              <div className="flex gap-2 mb-4 flex-wrap">
+                {savedUsers.slice(0, 3).map((user, index) => {
                   let displayName =
                     user.email.split("@")[0] || `User ${index + 1}`;
                   if (displayName.length > 12)
@@ -552,7 +540,7 @@ export default function StaffCheckinPage() {
                       key={index}
                       type="button"
                       onClick={() => quickLogin(user.email, user.code)}
-                      className="flex-1 min-w-[80px] bg-gray-100 text-[#02404F] border border-gray-300 px-3 py-2.5 text-[13px] font-semibold rounded-[30px] cursor-pointer transition-all hover:bg-[#EB7D23] hover:text-white"
+                      className="flex-1 bg-gray-100 text-[#02404F] border border-gray-300 px-2 py-1.5 text-[11px] font-semibold rounded-full hover:bg-[#EB7D23] hover:text-white transition-all"
                     >
                       {displayName}
                     </button>
@@ -561,12 +549,13 @@ export default function StaffCheckinPage() {
               </div>
             )}
 
-            <div className="flex gap-4 mt-6 flex-col sm:flex-row">
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-4">
               <button
                 type="button"
                 onClick={() => handleAction("checkin")}
                 disabled={isCheckInDisabled}
-                className={`flex-1 py-4 px-5 text-base font-bold rounded-[30px] cursor-pointer transition-all uppercase tracking-wide shadow-md hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-70 ${
+                className={`flex-1 py-2.5 text-sm font-bold rounded-full uppercase tracking-wide shadow-md transition-all ${
                   isCheckInDisabled
                     ? "bg-gray-400"
                     : "bg-[#02404F] hover:bg-[#036b82]"
@@ -578,40 +567,43 @@ export default function StaffCheckinPage() {
                 type="button"
                 onClick={() => handleAction("checkout")}
                 disabled={isCheckOutDisabled}
-                className="flex-1 bg-[#EB7D23] text-white py-4 px-5 text-base font-bold rounded-[30px] cursor-pointer transition-all uppercase tracking-wide shadow-md hover:bg-[#f08c3a] hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-70"
+                className="flex-1 bg-[#EB7D23] text-white py-2.5 text-sm font-bold rounded-full uppercase tracking-wide shadow-md hover:bg-[#f08c3a] transition-all disabled:bg-gray-400"
               >
                 {loading ? "..." : "Check Out"}
               </button>
             </div>
           </form>
 
-          {!todayCheckIn.hasCheckedOut && (
-            <div className="text-center mt-4">
+          {/* Clear Credentials */}
+          {!todayCheckIn.hasCheckedOut && savedUsers.length > 0 && (
+            <div className="text-center mt-3">
               <button
                 onClick={clearSavedData}
-                className="bg-transparent text-gray-400 border border-gray-200 px-3 py-2 text-xs rounded-[30px] cursor-pointer transition-all hover:bg-red-100 hover:text-red-700"
+                className="text-gray-400 text-[10px] hover:text-red-600 transition-colors"
               >
                 Clear saved credentials
               </button>
             </div>
           )}
 
+          {/* Status Message */}
           {status && (
             <div
-              className={`mt-5 p-4 rounded-[30px] text-center font-semibold text-sm ${
+              className={`mt-4 p-2 rounded-full text-center font-semibold text-xs ${
                 status.type === "success"
-                  ? "bg-green-100 text-green-800"
+                  ? "bg-green-100 text-green-700"
                   : status.type === "error"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-blue-100 text-blue-800"
+                    ? "bg-red-100 text-red-700"
+                    : "bg-blue-100 text-blue-700"
               }`}
             >
               {status.message}
             </div>
           )}
 
+          {/* Location Status */}
           <div
-            className={`text-xs text-center mt-5 p-2.5 rounded-[30px] flex items-center justify-center gap-2 ${
+            className={`mt-3 p-2 rounded-full text-[10px] text-center flex items-center justify-center gap-1.5 ${
               isLocationValid === false
                 ? "bg-red-50 text-red-600"
                 : isLocationValid === true
@@ -619,24 +611,29 @@ export default function StaffCheckinPage() {
                   : "bg-gray-50 text-gray-500"
             }`}
           >
-            <i className="not-italic animate-pulse">📍</i> {geoStatus}
+            <span>📍</span>
+            <span className="truncate">{geoStatus}</span>
           </div>
         </div>
       </div>
 
-      <footer className="w-full bg-gradient-to-r from-[#EB7D23] to-[#f59e4c] py-4 px-5 flex-shrink-0">
-        <div className="max-w-[420px] mx-auto flex items-center justify-center gap-5">
+      {/* Footer - compact */}
+
+      <footer className="bg-gradient-to-r from-[#EB7D23] to-[#f59e4c] py-2.5 flex-shrink-0">
+        <div className="flex items-center justify-center gap-2">
           <img
             src="https://kifiya.com/wp-content/uploads/2022/12/Kifiya_Full-Color.svg"
             alt="Kifiya"
-            className="max-w-[90px] h-auto brightness-0 invert"
+            className="w-9 h-auto brightness-0 invert"
           />
-          <div className="w-px h-[35px] bg-gradient-to-b from-transparent via-white to-transparent"></div>
+          <div className="w-px h-4 bg-white/30"></div>
           <div className="text-left">
-            <p className="text-white text-sm font-semibold">የኔ-ጉዞ by Kifiya</p>
-            <small className="text-white/90 text-[11px] block">
-              &copy; 2026 All rights reserved
-            </small>
+            <p className="text-white text-[9px] font-semibold">
+              የኔ-ጉዞ by Kifiya
+            </p>
+            <p className="text-white/80 text-[7px]">
+              © 2026 All rights reserved
+            </p>
           </div>
         </div>
       </footer>
